@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from fhir.resources.patient import Patient as FhirPatient
 from fhir.resources.identifier import Identifier as FhirIdentifier
 import databases
+from typing import Any
 
 app = FastAPI()
 
@@ -16,36 +17,36 @@ class PatientData(BaseModel):
     diagnosis: str
 
 # Set up the database
-DATABASE_URL = "postgresql://user:password@localhost:5432/dbname"  # Replace with your PostgreSQL connection details
-database = databases.Database(DATABASE_URL)
-Base = declarative_base()
+DATABASE_URL: str = "postgresql://user:password@localhost:5432/dbname"  # Replace with your PostgreSQL connection details
+database: databases.Database = databases.Database(DATABASE_URL)
+Base: Any = declarative_base()
 
 class Patient(Base):
-    __tablename__ = "patients"
+    __tablename__: str = "patients"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    age = Column(Integer)
-    diagnosis = Column(String)
-    fhir_identifier = Column(String)
+    id: Column = Column(Integer, primary_key=True, index=True)
+    name: Column = Column(String, index=True)
+    age: Column = Column(Integer)
+    diagnosis: Column = Column(String)
+    fhir_identifier: Column = Column(String)
 
 @app.on_event("startup")
-async def startup():
+async def startup() -> None:
     await database.connect()
-    engine = create_engine(DATABASE_URL)
+    engine: Any = create_engine(DATABASE_URL)
     Base.metadata.create_all(bind=engine)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    app.db = SessionLocal()
+    SessionLocal: Any = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    app.db: Any = SessionLocal()
 
 @app.on_event("shutdown")
-async def shutdown():
+async def shutdown() -> None:
     await database.disconnect()
     app.db.close()
 
 @app.post("/patients")
-async def create_patient(patient_data: PatientData):
+async def create_patient(patient_data: PatientData) -> dict[str, str]:
     # Create a new FHIR Patient resource
-    fhir_patient = FhirPatient(
+    fhir_patient: FhirPatient = FhirPatient(
         identifier=[
             FhirIdentifier(
                 system="http://example.com/patient-ids",
@@ -56,10 +57,10 @@ async def create_patient(patient_data: PatientData):
     )
 
     # Serialize the FHIR resource to JSON
-    fhir_json = fhir_patient.json()
+    fhir_json: str = fhir_patient.json()
 
     # Store the FHIR JSON along with other patient data in the database
-    patient = Patient(
+    patient: Patient = Patient(
         name=patient_data.name,
         age=patient_data.age,
         diagnosis=patient_data.diagnosis,
@@ -71,5 +72,5 @@ async def create_patient(patient_data: PatientData):
     return {"message": "Patient created successfully"}
 
 @app.get("/")
-def read_root():
+def read_root() -> dict[str, str]:
     return {"Hello": "World"}
